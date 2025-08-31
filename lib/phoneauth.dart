@@ -17,35 +17,78 @@ class Phoneauth extends StatefulWidget {
 class _PhoneauthState extends State<Phoneauth> {
   TextEditingController phonenumbercontroller = TextEditingController();
 
-  
+  bool isLoading = false;
 
+  bool _validatePhoneNumber(String phoneNumber) {
+    // E.164 format: + followed by country code and number
+    final regex = RegExp(r'^\+[1-9]\d{1,14}$');
 
+    if (phoneNumber.isEmpty) {
+      Uihelper.customShowDialog(context, "Please enter a phone number");
+      return false;
+    }
+
+    if (!regex.hasMatch(phoneNumber)) {
+      Uihelper.customShowDialog(
+        context,
+        "Please enter a valid phone number with country code\nExample: +919876543210",
+      );
+      return false;
+    }
+
+    return true;
+  }
 
   Future<void> phonenumber(String phonenumber) async {
-    if (phonenumber.isEmpty) {
-      return Uihelper.customShowDialog(context, "enter the phone number");
+    if (!_validatePhoneNumber(phonenumber)) {
+      return;
     }
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      verificationCompleted: (PhoneAuthCredential credential) {},
-      verificationFailed: (FirebaseAuthException ex) {
-        Uihelper.customShowDialog(
-          context,
-          "Verification Failed : ${ex.message}",
-        );
-      },
-      codeSent: (String verificationid, int? resendtoken) {
-        print("Verification ID: $verificationid");
+    setState(() {
+      isLoading = true;
+    });
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Otppage(verificationid: verificationid),
-          ),
-        );
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {},
-      phoneNumber: phonenumbercontroller.text.toString(),
-    );
+    try {
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        verificationCompleted: (PhoneAuthCredential credential) {
+          setState(() {
+            isLoading = false; // ← ADD THIS
+          });
+        },
+        verificationFailed: (FirebaseAuthException ex) {
+          setState(() {
+            isLoading = false; // ← ADD THIS
+          });
+          Uihelper.customShowDialog(
+            context,
+            "Verification Failed : ${ex.message}",
+          );
+        },
+        codeSent: (String verificationid, int? resendtoken) {
+          setState(() {
+            isLoading = false; // ← ADD THIS
+          });
+          print("Verification ID: $verificationid");
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Otppage(verificationid: verificationid),
+            ),
+          );
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          setState(() {
+            isLoading = false; // ← ADD THIS
+          });
+        },
+        phoneNumber: phonenumber,
+      );
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      Uihelper.customShowDialog(context, "Error: $e");
+    }
   }
 
   @override
@@ -75,19 +118,23 @@ class _PhoneauthState extends State<Phoneauth> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                phonenumber(phonenumbercontroller.text.trim());
-
-                print("Phone number: ${phonenumbercontroller.text.trim()}");
-              },
-              child: Text(
-                'Confirm number',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      String phone = phonenumbercontroller.text.trim();
+                      print("Phone Number : $phone");
+                      phonenumber(phone);
+                    },
+              child: isLoading
+                  ? CircularProgressIndicator()
+                  : Text(
+                      'Confirm number',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ],
         ),

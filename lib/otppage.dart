@@ -14,7 +14,13 @@ class Otppage extends StatefulWidget {
 
 class _OtppageState extends State<Otppage> {
   TextEditingController otpcontroller = TextEditingController();
+
+   bool isLoading = false;
   Future<void> otp() async {
+
+      setState(() {
+      isLoading = true; // ← ADD THIS
+    });
     try {
       PhoneAuthCredential credential = PhoneAuthProvider.credential(
       verificationId: widget.verificationid,
@@ -29,6 +35,9 @@ class _OtppageState extends State<Otppage> {
       ),
     );
     } catch (e) {
+        setState(() {
+      isLoading = true; // ← ADD THIS
+    });
       print("OTP verification failed: $e");
 
     }
@@ -62,10 +71,10 @@ class _OtppageState extends State<Otppage> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
+              onPressed:isLoading ? null : () {
                 otp();
               },
-              child: Text(
+              child: isLoading ?CircularProgressIndicator() : Text(
                 'Confirm Otp',
                 style: TextStyle(
                   color: Colors.black,
